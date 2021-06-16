@@ -1,0 +1,990 @@
+---
+title: "CS5811 DDA CourseWork Anaylsis"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  html_notebook:
+    df_print: paged
+  editor_options: null
+  chunk_output_type: console
+  word_document: default
+---
+
+```{r include=FALSE}
+chooseCRANmirror(graphics=FALSE, ind=1)
+knitr::opts_chunk$set(comment = '>')
+```
+
+### Data Exploration ,Cleaning ,Machine Learning Model and Evaluation 
+*Sindhura Rakesh*
+
+***
+#### Table of contents
+
+1. [Required Libraries](#R Pacakges)
+2. [Data exploration and preparation](#Data_exploration)
+3. [Exploratory Data Analysis](#EDA)
+4. [Principle Component Analysis](#PCA)  
+5. [Clustering analysis K-Means and hierarchical](#Cluster_Analysis) 
+6. [Clustering using PAM](#Cluster_PAM) 
+7. [Split traning and testing for PCA with NN](#TestTrain_Sampling)
+8. [Normalization checks](#Normalization) 
+9. [Neural Network Modeling in R with PCA and Model Evalaution ](#NeuralNetwork_Modeling_PCA)  
+10. [Neural Network Modeling in R without PCA and Model Evaluation](#NeuralNetwork_Modeling)  
+11. [Ramdon Forest Machine Learning using SPARK and Confusion Metrix](#Ramdon_Forest)  
+12. [RMSE measure for liner model](#Evaluaion)  
+13. [Resampling](#Boot_Strapping)  
+
+### 1. Required Libraries{#R Pacakges}  
+```{r}
+#install.packages('plyr', repos = "http://cran.us.r-project.org")
+install.packages("lubridate")
+install.packages("dplyr")
+install.packages("dlookr")
+install.packages( "ggplot2")
+install.packages("remotes")
+remotes::install_github("vqv/ggbiplot",force = TRUE)
+install.packages("factoextra")
+install.packages("colorspace")
+install.packages("ykmeans")
+install.packages("cluster")
+install.packages("nortest")
+install.packages('neuralnet')
+install.packages('sparklyr')
+
+library(ggplot2)
+library(skimr)
+library(lubridate)
+library(dlookr)
+library(dplyr)
+library(devtools)
+library(ggbiplot)
+library("factoextra")
+library(mlbench)
+library(caret)
+library(randomForest)
+library(devtools)
+library(ykmeans)
+library(cluster)
+library(nortest)
+library(neuralnet)
+library(sparklyr)
+library(caret)
+library(boot)
+library(broom)
+```
+
+
+### 2. Data exploration and preparation {#Data_exploration}
+```{r}
+# Author: Sindhura R
+
+# Data loading in to R with 6 lacs records records for cleaning process 
+
+url <- 'C:/Users/sindh/Downloads/nyc_taxi_samp_sr.csv'
+
+Nyc_Taxi_Weather_Data <- read.csv(url)
+
+# Get a summary report
+
+summary(Nyc_Taxi_Weather_Data)
+
+#Data Cleaning 
+
+# converting 2 variables in to factors 
+
+Nyc_Taxi_Weather_Data$payment_type <- as.factor(Nyc_Taxi_Weather_Data$payment_type)
+Nyc_Taxi_Weather_Data$weather_description <- as.factor(Nyc_Taxi_Weather_Data$weather_description)
+
+#########################################
+
+## This is already included in the group and added here to run it separately for this file
+          
+summary(Nyc_Taxi_Weather_Data$pickup_datetime)
+summary(Nyc_Taxi_Weather_Data$trip_duration) # Problem 
+summary(Nyc_Taxi_Weather_Data$passenger_count) # Problem
+summary(Nyc_Taxi_Weather_Data$trip_distance)
+summary(Nyc_Taxi_Weather_Data$total_amount) # Problem
+summary(Nyc_Taxi_Weather_Data$payment_type)
+summary(Nyc_Taxi_Weather_Data$humidity) # We might not need it
+summary(Nyc_Taxi_Weather_Data$pressure) # We might not need it
+summary(Nyc_Taxi_Weather_Data$temperature)
+summary(Nyc_Taxi_Weather_Data$wind_direct) # Problem, we might not need it
+summary(Nyc_Taxi_Weather_Data$wind_speed) # Problem, we might not need it
+summary(Nyc_Taxi_Weather_Data$weather_description)
+
+# Checking duplicates values in the data set 
+
+Nyc_Taxi_Weather_Data <- unique(Nyc_Taxi_Weather_Data)
+
+dim(Nyc_Taxi_Weather_Data)
+
+duplicated <- duplicated(Nyc_Taxi_Weather_Data$trip_id)
+
+Nyc_Taxi_Weather_Data[(which(duplicated)),]
+
+## Check any outliers in the data set using box plot
+
+
+boxplot(Nyc_Taxi_Weather_Data$trip_duration) # There are negative variables, need to be removed. Also very high values in terms of duration.
+boxplot(Nyc_Taxi_Weather_Data$passenger_count) # Few impossible passenger count numbers.
+boxplot(Nyc_Taxi_Weather_Data$total_amount) # Too many high amount of price, needs to be removed.
+boxplot(Nyc_Taxi_Weather_Data$wind_direct) # Too many outliers.
+boxplot(Nyc_Taxi_Weather_Data$wind_speed) # Few outliers.
+
+# Checking data quality 
+
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$trip_duration >= 0, ]
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$passenger_count <= 9, ]
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$trip_distance > 0, ]
+
+
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$trip_duration <= 10800, ]
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$passenger_count > 0, ]
+
+# According to NY taxi rules, maximum number of passengers in taxi is 6.
+Nyc_Taxi_Weather_Data <- Nyc_Taxi_Weather_Data[Nyc_Taxi_Weather_Data$passenger_count <= 6, ]
+
+
+# Missing values detection 
+
+skim(Nyc_Taxi_Weather_Data)
+
+
+# Trip distance is min 0.5 mile as it is half mile. so 0.05 mile is less than half 
+
+Nyc_Taxi_Weather_Data <-Nyc_Taxi_Weather_Data[(Nyc_Taxi_Weather_Data$trip_distance > 0.50),]
+
+# Trip duration is min 60 seconds 1 min (Column represents in seconds ) 
+
+
+Nyc_Taxi_Weather_Data <-Nyc_Taxi_Weather_Data[(Nyc_Taxi_Weather_Data$trip_duration > 60),]
+summary(Nyc_Taxi_Weather_Data)
+
+# Varaible transformation included here and it is in group work.
+
+# We will create trip_duration categories of ShortJourney=<900, MidJourney=900-3600, LongJourney=<=3600
+
+
+Cartrip_duration <- cut(Nyc_Taxi_Weather_Data$trip_duration, breaks = c(0, 900, 3600, Inf), labels = c("ShortJourney", "MidJourney", "LongJourney"))
+
+
+Nyc_Taxi_Weather_Data$description_of_journey <- cut(Nyc_Taxi_Weather_Data$trip_duration, breaks = c(0, 360, 960, Inf), labels = c("ShortJourney", "MidJourney", "LongJourney"))
+
+table(Nyc_Taxi_Weather_Data$description_of_journey)
+
+
+# We will create total_amount categories of LowPrice- =<10.00, ModeratePrice=10.00-20.00, ExpensivePrice- =<20.00
+
+
+Cartotal_amount <- cut(Nyc_Taxi_Weather_Data$total_amount, breaks = c(0, 10.00, 20.00, Inf), labels = c("LowPrice", "ModeratePrice", "ExpensivePrice"))
+
+
+Nyc_Taxi_Weather_Data$description_of_totalamount <- cut(Nyc_Taxi_Weather_Data$total_amount, breaks = c(0, 10.00, 20.00, Inf), labels = c("LowPrice", "ModeratePrice", "ExpensivePrice"))
+
+# We will create pickup datetime categories of EarlyMorning = 00:00-06:00, LateMorning 06.00-12.00, Afternoon = 12:00-18:00, Evening = 18:00-24:00
+
+
+# create breaks
+breaks <- hour(hm("00:00", "6:00", "12:00", "18:00", "23:59"))
+# labels for the breaks
+labels <- c("Night", "Morning", "Afternoon", "Evening")
+
+Nyc_Taxi_Weather_Data$Time_of_day <- cut(x=hour(Nyc_Taxi_Weather_Data$pickup_datetime), breaks = breaks, labels = labels, include.lowest=TRUE)
+
+table(Nyc_Taxi_Weather_Data$Time_of_day)
+```
+
+
+### 3. Exploratory Data Analysis{#EDA}
+```{r}
+set.seed(1)
+nyc_Taxi_Weather_Data_sample <- Nyc_Taxi_Weather_Data %>%
+  sample_n(12000) # sub sampled 2 % of my original data set for ML technique
+
+dim(nyc_Taxi_Weather_Data_sample)
+
+#nyc_Taxi_Weather_Data_sample <- Nyc_Taxi_Weather_Data %>%
+  #sample_n(57000) : It is considered for initial analysis 
+
+# Describe the data
+
+describe(nyc_Taxi_Weather_Data_sample) # skewnesss and kuttosis in the attributes()
+
+# Normality test 
+
+normality(nyc_Taxi_Weather_Data_sample)
+
+nyc_Taxi_Weather_Data_sample %>% 
+  normality() %>%
+  filter(p_value <=0.01) %>%
+  arrange(abs(p_value))
+
+# Plot normality
+
+plot_normality(nyc_Taxi_Weather_Data_sample ,total_amount,temperature)
+
+#Correlation
+
+correlate(nyc_Taxi_Weather_Data_sample)
+
+plot_correlate(nyc_Taxi_Weather_Data_sample)
+
+
+#Visualising distributions
+
+str(Nyc_Taxi_Weather_Data)
+
+#Categorical 
+
+ggplot(data = nyc_Taxi_Weather_Data_sample) +
+  geom_bar(mapping = aes(x = description_of_journey ))
+
+
+# continuous (histogram)
+
+ggplot(data = nyc_Taxi_Weather_Data_sample) +
+  geom_histogram(mapping = aes(x = trip_distance), binwidth = 0.5)
+
+# continuous (Multiple histogram)
+
+ggplot(data = nyc_Taxi_Weather_Data_sample, mapping = aes(x = total_amount, colour = description_of_journey)) +
+  geom_freqpoly(binwidth = 0.1)
+
+ggplot(data = nyc_Taxi_Weather_Data_sample, mapping = aes(x = total_amount, y = weather_description)) +
+  geom_boxplot()
+
+
+# Ranking Total Fare with type of journey categorical variable 
+
+ggplot(data=nyc_Taxi_Weather_Data_sample,aes(x=reorder(description_of_journey,total_amount),y=total_amount)) + 
+  geom_bar(stat ='identity',aes(fill=total_amount))+
+  coord_flip() + 
+  theme_grey() + 
+  scale_fill_gradient(name="Total Fare Level")+
+  labs(title = 'Ranking of description_of_journey by total fare',
+       y='Type Of jopurney',x='Total Fare')+ 
+  geom_hline(yintercept = mean(Nyc_Taxi_Weather_Data$total_amount),size = 1, color = 'blue')
+```
+### 4. Principle Component Analysis{#PCA}
+```{r}
+
+#Check structure and dimension of  random sample data  
+summary(nyc_Taxi_Weather_Data_sample)
+str(nyc_Taxi_Weather_Data_sample)
+dim(nyc_Taxi_Weather_Data_sample)
+
+# Excluded all the categorical variables for analysis and response variable total_amount
+
+PC_Nyc_Taxi_Weather_Data <- prcomp( ~.-X - total_amount - pickup_datetime - payment_type - weather_description - description_of_journey - description_of_totalamount -Time_of_day,center=T,scale=T,data = nyc_Taxi_Weather_Data_sample)
+
+# Check PCA loading and eigen values 
+
+pc_Nyc_Taxi_Weather_var <- PC_Nyc_Taxi_Weather_Data$sdev^2
+pc_Nyc_Taxi_Weather_var
+pc_Nyc_Taxi_Weather_PEV <- pc_Nyc_Taxi_Weather_var / sum(pc_Nyc_Taxi_Weather_var)
+
+pc_Nyc_Taxi_Weather_PEV
+
+# Check PCA ladings
+
+pc_Nyc_Taxi_Weather_loadings <- PC_Nyc_Taxi_Weather_Data$rotation
+pc_Nyc_Taxi_Weather_loadings
+
+#PC_Nyc_Taxi_Weather_Data$x ## More data showing in html so I commented it 
+
+Nyc_Taxi_Weather_Data1 <- cbind(nyc_Taxi_Weather_Data_sample,PC_Nyc_Taxi_Weather_Data$x[,1:2])
+
+Nyc_Taxi_Weather_Data1
+
+summary(PC_Nyc_Taxi_Weather_Data)
+
+plot(PC_Nyc_Taxi_Weather_Data,type="l")
+
+biplot(PC_Nyc_Taxi_Weather_Data,scale=0)
+
+attributes(PC_Nyc_Taxi_Weather_Data)
+
+
+
+# plot PCA using factoextra package 
+
+
+
+eig.val <- get_eigenvalue(PC_Nyc_Taxi_Weather_Data)
+eig.val
+
+fviz_pca_var(PC_Nyc_Taxi_Weather_Data, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE # Avoid text overlapping
+             )
+
+
+# generate a biplot for each pair of important PCs (and show them on the same page)
+#   note: the option choices is used to select the PCs - default is 1:2
+opar = par()
+par(mfrow = c(2,2))
+biplot(
+  PC_Nyc_Taxi_Weather_Data,
+  scale = 0,
+  col = c('grey40','orange')
+)
+biplot(
+  PC_Nyc_Taxi_Weather_Data,
+  choices = c(1,3),
+  scale = 0,
+  col = c('grey40','orange')
+)
+biplot(
+  PC_Nyc_Taxi_Weather_Data,
+  choices = c(2,3),
+  scale = 0,
+  col = c('grey40','orange')
+)
+par(opar)
+
+# Plot graph using Broken Stick model using eigenvalues 
+
+
+evplot = function(pc_Nyc_Taxi_Weather_var) {
+  # Broken stick model (MacArthur 1957)
+  n = length(pc_Nyc_Taxi_Weather_var)
+  bsm = data.frame(j=seq(1:n), p=0)
+  bsm$p[1] = 1/n
+  for (i in 2:n) bsm$p[i] = bsm$p[i-1] + (1/(n + 1 - i))
+  bsm$p = 100*bsm$p/n
+  # Plot eigenvalues and % of variation for each axis
+  op = par(mfrow=c(2,1),omi=c(0.1,0.3,0.1,0.1), mar=c(1, 1, 1, 1))
+  barplot(pc_Nyc_Taxi_Weather_var, main="Eigenvalues", col="bisque", las=2)
+  abline(h=mean(pc_Nyc_Taxi_Weather_var), col="red")
+  legend("topright", "Average eigenvalue", lwd=1, col=2, bty="n")
+  barplot(t(cbind(100*pc_Nyc_Taxi_Weather_var/sum(pc_Nyc_Taxi_Weather_var), bsm$p[n:1])), beside=TRUE, 
+          main="% variation", col=c("bisque",2), las=2)
+  legend("topright", c("% eigenvalue", "Broken stick model"), 
+         pch=15, col=c("bisque",2), bty="n")
+  par(op)
+}
+
+evplot(pc_Nyc_Taxi_Weather_var)
+summary(PC_Nyc_Taxi_Weather_Data)
+
+
+ggbiplot(PC_Nyc_Taxi_Weather_Data, choices=c(1,2), obs.scale = 1, var.scale = 1)
+
+## Draw based on description of journey 
+
+ggbiplot(PC_Nyc_Taxi_Weather_Data,choices=c(1,2), groups=nyc_Taxi_Weather_Data_sample[,15], obs.scale = 1, var.scale = 1, ellipse = TRUE)
+
+
+```
+
+### 5. Clustering analysis K-Means and hierarchical {#Cluster_Analysis}
+```{r}
+#cluster analysis 
+
+Filtered_data <-dplyr::select(nyc_Taxi_Weather_Data_sample, -c('X', 'pickup_datetime','payment_type','weather_description','description_of_journey','description_of_totalamount','Time_of_day',))
+
+colnames(Filtered_data)
+
+## Scaling data before predicting unlabeled data 
+
+Nyc_Taxi_Weather_Data_scaled <- scale(Filtered_data)
+
+#Nyc_Taxi_Weather_Data_scaled ## More data showing so I commented it 
+
+
+# ykmeans used to perform clustering based on target variable 
+
+
+
+list_of_target <- c("temperature","trip_duration","humidity","pressure")
+
+nyc_weather_taxi.ykm  <- ykmeans(nyc_Taxi_Weather_Data_sample,list_of_target, target.name  ="total_amount",k.list = 1:3,cluster.name = "cluster")
+
+table(nyc_weather_taxi.ykm$cluster)
+
+## Applied K means clustering 
+
+fitM <- kmeans(Nyc_Taxi_Weather_Data_scaled,10)
+
+str(fitM)
+
+## Choosing K
+
+k <- list()
+for(i in 1:10){
+  k[[i]] <- kmeans(Nyc_Taxi_Weather_Data_scaled,i)
+}
+
+
+betweenss_totss <- list()
+for(i in 1:10){
+  betweenss_totss[[i]] <- k[[i]]$betweenss/k[[i]]$totss
+}
+
+
+dist <- dist(Filtered_data, method = 'euclidian')
+#   then apply complete linkage
+hc <- hclust(dist, method = 'complete')
+hc
+
+
+######################################################################
+# 2. cluster analysis
+### 2.1 hierarchical clustering - complete linkage
+
+str(Filtered_data)
+dist_taxi_weather_clean <- dist(Filtered_data, method = 'euclidian')
+hc_taxi_weather_clean <- hclust(dist_taxi_weather_clean, method = 'complete')
+
+### 2.2 plot the associated dendrogram
+plot(hc_taxi_weather_clean, hang = -0.1)
+
+### 2.3 select a partition containing 3 groups
+hc_cluster_id_taxi_weather_clean <- cutree(hc_taxi_weather_clean, k = 3)
+hc_cluster_4 <- cutree(hc_taxi_weather_clean, k = 4)
+
+### 2.4 k-means with 3 groups
+
+k_taxi_Weather_clean = kmeans(Filtered_data[,-5], 3)
+k_cluster_id_taxi_Weather_clean <- k_taxi_Weather_clean$cluster
+
+######################################################################
+# 3. Evaluation of cluster results
+### 3.1 silhoutte score
+sil_hc_taxi_Weather_clean <- cluster::silhouette(hc_cluster_id_taxi_weather_clean, dist_taxi_weather_clean)
+sil_k_taxi_Weather_clean <- cluster::silhouette(k_cluster_id_taxi_Weather_clean, dist_taxi_weather_clean)
+
+
+### 3.2 silhoutte plots
+###   note: use border = 'grey' to be able to see the plot lines
+opar <- par()
+par(mfrow = c(2,1))
+plot(sil_hc_taxi_Weather_clean, border = 'grey')
+plot(sil_k_taxi_Weather_clean, border = 'grey')
+par(opar)
+
+### 3.3 get the attributes averages per cluster
+###   for the best clustering result (according to the silhoutte plots)
+###   and join the results in a data frame
+taxi_Weather_cl_1 <- apply(Filtered_data[k_cluster_id_taxi_Weather_clean == 1,-1], 2, mean)
+taxi_Weather_cl_2 <- apply(Filtered_data[k_cluster_id_taxi_Weather_clean == 2,-1], 2, mean)
+taxi_Weather_cl_3 <- apply(Filtered_data[k_cluster_id_taxi_Weather_clean == 3,-1], 2, mean)
+taxi_Weather_cluster_averages <- rbind(taxi_Weather_cl_1, taxi_Weather_cl_2, taxi_Weather_cl_3)
+
+taxi_Weather_cluster_averages
+```
+
+### 6. Clustering using PAM{#Cluster_PAM}
+```{r}
+
+pam = pam(dist_taxi_weather_clean,3)
+
+names(pam)
+table(hc_cluster_id_taxi_weather_clean)
+
+table(hc_cluster_id_taxi_weather_clean,pam$clustering)
+
+str(hc_cluster_id_taxi_weather_clean)
+
+#########################################################################
+# It is displaying more data in HTML so I have commented it 
+
+#Filtered_data$total_amount[hc_cluster_id_taxi_weather_clean == 1] 
+
+
+#sapply(unique(hc_cluster_id_taxi_weather_clean),function(g)Filtered_data$total_amount[hc_cluster_id_taxi_weather_clean == g])
+#sapply(unique(hc_cluster_4),function(g)Filtered_data$total_amount[hc_cluster_4 == g])
+#hc_cluster_4
+#########################################################################
+aggregate(Filtered_data,list(hc_cluster_id_taxi_weather_clean),median)
+
+
+```
+
+### 7. Split traning and testing for PCA with NN{#TestTrain_Sampling}
+
+```{r}
+fileterd_data_pca <-dplyr::select(nyc_Taxi_Weather_Data_sample, -c('X', 'pickup_datetime','payment_type','weather_description','description_of_journey','description_of_totalamount','Time_of_day',))
+
+
+# install and load the neuralnet package from CRAN
+if(require(neuralnet) == FALSE){
+  install.packages('neuralnet')
+}
+
+
+MinMax <- function(x){
+  tx <- (x - min(x)) / (max(x) - min(x))
+  return(tx)
+}
+
+Nyc_Taxi_Weather_minmax <- apply(fileterd_data_pca, 2, MinMax)
+
+
+Nyc_Taxi_Weather_minmax <- as.data.frame(Nyc_Taxi_Weather_minmax)
+
+# create a 70/30 training/test set split
+n_rows <- nrow(Nyc_Taxi_Weather_minmax)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_Nyc_Taxi_Weather_minmax <- Nyc_Taxi_Weather_minmax[training_idx,]
+test_Nyc_Taxi_Weather_minmax <- Nyc_Taxi_Weather_minmax[-training_idx,]
+```
+
+
+### 8. Normalization checks{#Normalization}
+```{r}
+## Check if the distribution is normal or not
+#Perform Anderson-Darling normality test
+
+ad.test(as.numeric(t(Nyc_Taxi_Weather_minmax)))
+
+# Perform Pearson chi-square test for normality
+
+pearson.test(as.numeric(t(Nyc_Taxi_Weather_minmax)))
+
+pearson.test(as.numeric(t(Filtered_data)))
+
+plot(density(as.numeric(t(Nyc_Taxi_Weather_minmax))))
+
+
+## Plot using a qqplot
+qqnorm(as.numeric(t(Nyc_Taxi_Weather_minmax)));qqline(as.numeric(t(Nyc_Taxi_Weather_minmax)), col = 2)
+
+
+normality_test <-dplyr::select(nyc_Taxi_Weather_Data_sample, -c('X', 'pickup_datetime','payment_type','weather_description','description_of_journey','description_of_totalamount','Time_of_day'))
+
+str(normality_test)
+class(normality_test)
+attach(normality_test)
+plot(density(normality_test$trip_distance,
+             normality_test$total_amount,
+             normality_test$trip_duration))
+
+```
+
+
+
+### 9. Neural Network Modeling in R with PCA and Model Evalaution{#NeuralNetwork_Modeling_PCA}
+
+```{r}
+## Applied 3 PC components to model neural network 
+
+
+PC_Nyc_Taxi_Weather_TainData <- prcomp( ~.- total_amount,center=T,scale=T,data = training_Nyc_Taxi_Weather_minmax)
+
+train.data <- data.frame(taxi_price = training_Nyc_Taxi_Weather_minmax$total_amount, PC_Nyc_Taxi_Weather_TainData$x[,1:9])
+
+
+train.data <- train.data[,1:6]
+
+
+colnames(PC_Nyc_Taxi_Weather_TainData$x)
+
+Nyc_Taxi_Weather_nn_1 <- neuralnet(taxi_price~., data = train.data ,rep=2 ,stepmax =1e+08 )
+
+
+#Nyc_Taxi_Weather_nn_1 ## More number of records so commented it 
+
+
+#transform test into PCA
+
+test.data <- predict(PC_Nyc_Taxi_Weather_TainData, newdata = test_Nyc_Taxi_Weather_minmax)
+
+test.data <- as.data.frame(test.data)
+
+#select the first 5 components
+test.data <- test.data[,1:9]
+
+#make prediction on test data
+#rpart.prediction <- predict(Nyc_Taxi_Weather_nn_1, test.data)
+rpart.prediction <- predict(Nyc_Taxi_Weather_nn_1, test.data)
+
+results <- data.frame(
+  actual = test_Nyc_Taxi_Weather_minmax$total_amount,
+  nn_1 = rpart.prediction)
+
+plot(Nyc_Taxi_Weather_nn_1)
+
+## 96 % correlation shown using PC1 and PC2 variables 
+
+cor(results$actual,results$nn_1)
+
+## Demoralization of the results generated by PCA to Modeling 
+
+predict_denormalise<- (rpart.prediction*
+                    (max(nyc_Taxi_Weather_Data_sample$total_amount)-min(nyc_Taxi_Weather_Data_sample$total_amount)))+min(nyc_Taxi_Weather_Data_sample$total_amount)
+  
+atual_denormalise<- (test_Nyc_Taxi_Weather_minmax$total_amount*
+                    (max(nyc_Taxi_Weather_Data_sample$total_amount)-min(nyc_Taxi_Weather_Data_sample$total_amount)))+min(nyc_Taxi_Weather_Data_sample$total_amount)
+
+
+denormalise_results <- data.frame(actual= atual_denormalise , perdict =predict_denormalise)
+denormalise_results
+
+
+str(test_Nyc_Taxi_Weather_minmax)
+
+
+## Accuracy checking 
+
+# 97 % of accuracy shown by the model
+
+predicted=results$nn_1 * abs(diff(range(training_Nyc_Taxi_Weather_minmax$total_amount))) + min(training_Nyc_Taxi_Weather_minmax$total_amount)
+
+actual=results$actual* abs(diff(range(training_Nyc_Taxi_Weather_minmax$total_amount))) + min(training_Nyc_Taxi_Weather_minmax$total_amount)
+
+comparison=data.frame(predicted,actual)
+
+deviation=((actual-predicted)/actual)
+comparison=data.frame(predicted,actual,deviation)
+accuracy=1-abs(mean(deviation))
+accuracy
+  
+```
+
+```{r}
+
+fileterd_data <-dplyr::select(nyc_Taxi_Weather_Data_sample, -c('X', 'pickup_datetime','payment_type','weather_description','description_of_journey','description_of_totalamount','Time_of_day',))
+
+
+# install and load the neuralnet package from CRAN
+if(require(neuralnet) == FALSE){
+  install.packages('neuralnet')
+}
+
+MinMax <- function(x){
+  tx <- (x - min(x)) / (max(x) - min(x))
+  return(tx)
+}
+
+Nyc_Taxi_Weather_minmax <- apply(Filtered_data, 2, MinMax)
+
+
+Nyc_Taxi_Weather_minmax <- as.data.frame(Nyc_Taxi_Weather_minmax)
+
+# create a 70/30 training/test set split
+n_rows <- nrow(Nyc_Taxi_Weather_minmax)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_Nyc_Taxi_Weather_minmax <- Nyc_Taxi_Weather_minmax[training_idx,]
+test_Nyc_Taxi_Weather_minmax <- Nyc_Taxi_Weather_minmax[-training_idx,]
+```
+
+```{r}
+#### 3. Neural network training{#Neural_network_training}
+
+# define a formula for predicting total amount which is taxi fare
+
+Nyc_Taxi_Weather_formula = total_amount ~ trip_id + trip_duration + passenger_count + trip_distance + humidity + pressure + temperature + wind_direct +wind_speed
+
+# train a neural network with 1 hidden node
+Nyc_Taxi_Weather_nn_1 <- neuralnet(Nyc_Taxi_Weather_formula, data = training_Nyc_Taxi_Weather_minmax,stepmax=1e+08)
+
+Nyc_Taxi_Weather_nn_3 <- neuralnet(Nyc_Taxi_Weather_formula, hidden = 3, rep=3, data = training_Nyc_Taxi_Weather_minmax)
+
+attributes(Nyc_Taxi_Weather_nn_3)
+
+
+# train a neural network with 5 nodes on one hidden layer
+#   note: the number of layers is set with the hidden option parameter
+Nyc_Taxi_Weather_nn_5 <- neuralnet(Nyc_Taxi_Weather_formula, hidden = 5, data = training_Nyc_Taxi_Weather_minmax,stepmax=1e+08)
+
+#,stepmax=1e+08
+
+length(Nyc_Taxi_Weather_nn_5$startweights)
+length(Nyc_Taxi_Weather_nn_5$weights)
+
+# train a neural network with 5 nodes on each of two hidden layers
+Nyc_Taxi_Weather_nn_55 <- neuralnet(Nyc_Taxi_Weather_formula, hidden = c(5,5), data = training_Nyc_Taxi_Weather_minmax,stepmax=1e+08)
+
+# plot the three neural networks and compare their structure
+plot(Nyc_Taxi_Weather_nn_1)
+plot(Nyc_Taxi_Weather_nn_3)
+plot(Nyc_Taxi_Weather_nn_5)
+plot(Nyc_Taxi_Weather_nn_55)
+```
+
+### 10. Neural Network Modeling in R without PCA and Model Evaluation{#NeuralNetwork_Modeling}
+```{r}
+# compute the prediction for each neural network
+#   note: the totalamount attribute (column 5) is excluded from the test data set
+pred_Nyc_Taxi_Weather_nn_1 <- compute(Nyc_Taxi_Weather_nn_1, test_Nyc_Taxi_Weather_minmax[,-5])
+pred_Nyc_Taxi_Weather_nn_3 <- compute(Nyc_Taxi_Weather_nn_3, test_Nyc_Taxi_Weather_minmax[,-5])
+pred_Nyc_Taxi_Weather_nn_5 <- compute(Nyc_Taxi_Weather_nn_5, test_Nyc_Taxi_Weather_minmax[,-5])
+pred_Nyc_Taxi_Weather_nn_55 <- compute(Nyc_Taxi_Weather_nn_55, test_Nyc_Taxi_Weather_minmax[,-5])
+
+str(pred_Nyc_Taxi_Weather_nn_1)
+
+# create a table with actual values and the three predictions
+#   note: predicted values are stored as net_result attribute of the prediction object
+Nyc_Taxi_Weather_results <- data.frame(
+  actual = test_Nyc_Taxi_Weather_minmax$total_amount,
+  nn_1 = pred_Nyc_Taxi_Weather_nn_1$net.result,
+  nn_3 = pred_Nyc_Taxi_Weather_nn_3$net.result,
+ nn_5 = pred_Nyc_Taxi_Weather_nn_5$net.result,
+  nn_55 = pred_Nyc_Taxi_Weather_nn_55$net.result
+ # nn_55 = pred_Nyc_Taxi_Weather_nn_5$net.result
+)
+
+
+results <- data.frame(
+  actual = test_Nyc_Taxi_Weather_minmax$total_amount,
+  nn_1 = pred_Nyc_Taxi_Weather_nn_1$net.result,
+  nn_3 = pred_Nyc_Taxi_Weather_nn_3$net.result)
+
+##x = (max - min) * z + min
+
+## Denormalising the predicted vers Actual results for each Nueral network
+
+predict_denormalise<-  (pred_Nyc_Taxi_Weather_nn_3$net.result*
+                    (max(fileterd_data$total_amount)-min(fileterd_data$total_amount)))+min(fileterd_data$total_amount)
+  
+atual_denormalise<- (test_Nyc_Taxi_Weather_minmax$total_amount*
+                    (max(fileterd_data$total_amount)-min(fileterd_data$total_amount)))+min(fileterd_data$total_amount)
+
+
+denormalise_results <- data.frame(actual= atual_denormalise , perdict =predict_denormalise)
+  denormalise_results
+str(test_Nyc_Taxi_Weather_minmax)
+
+class(Nyc_Taxi_Weather_results[,'actual'])
+
+# calculate the correlation between actual and predicted values to identify the best predictor
+
+cor(Nyc_Taxi_Weather_results[,'actual'], Nyc_Taxi_Weather_results[,c("nn_1","nn_3","nn_5","nn_55")])
+
+Nyc_Taxi_Weather_nn_3$result.matrix
+
+
+attach(training_Nyc_Taxi_Weather_minmax)
+
+#Nyc_Taxi_Weather_results$actual ## Commented it because more data displaying in HTML
+
+#Confusion Matrix and Statistics
+
+round_Nyc_Taxi_Weather_results <- sapply(Nyc_Taxi_Weather_results,round,digits=0)
+class(round_Nyc_Taxi_Weather_results)
+df_round_Nyc_Taxi_Weather_results =data.frame(round_Nyc_Taxi_Weather_results)
+
+attributes(round_Nyc_Taxi_Weather_results)
+
+#table(test_Nyc_Taxi_Weather_minmax$total_amount,pred_Nyc_Taxi_Weather_nn_3$net.result)## Commented it because more data displaying in HTML
+
+
+results <- data.frame(actual = test_Nyc_Taxi_Weather_minmax$total_amount, prediction = pred_Nyc_Taxi_Weather_nn_3$net.result)
+results
+
+#####################################################
+
+#Accuracy achieved 96 %  converting our data back into standard values given that they were previously scaled using the max-min normalization technique:
+  
+predicted=results$prediction * abs(diff(range(training_Nyc_Taxi_Weather_minmax$total_amount))) + min(training_Nyc_Taxi_Weather_minmax$total_amount)
+
+actual=results$actual * abs(diff(range(training_Nyc_Taxi_Weather_minmax$total_amount))) + min(training_Nyc_Taxi_Weather_minmax$total_amount)
+
+comparison=data.frame(predicted,actual)
+
+deviation=((actual-predicted)/actual)
+comparison=data.frame(predicted,actual,deviation)
+accuracy=1-abs(mean(deviation))
+accuracy
+
+#####################################################
+
+#### 
+# plot actual vs predicted
+
+plot(results$prediction,results$actual,xlab="predicted",ylab="actual",abline(a=0,b=1))
+
+
+str(test_Nyc_Taxi_Weather_minmax$total_amount)
+
+```
+
+
+
+```{r}
+# Created training and testing data set without any normalization for the Random forest algorithm as it is tree based. Considered 5 lacs dta points for analysis in spark
+
+dim(nyc_Taxi_Weather_Data_sample)
+# create a 70/30 training/test set split
+n_rows <- nrow(nyc_Taxi_Weather_Data_sample)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+s_training_idx_spark <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_Nyc_Taxi_Weather_spark <- nyc_Taxi_Weather_Data_sample[s_training_idx_spark,]
+test_Nyc_Taxi_Weather_spark <- nyc_Taxi_Weather_Data_sample[-s_training_idx_spark,]
+```
+
+
+### 11. Ramdon Forest Machine Learning using SPARK and Confusion Metrix{#Ramdon_Forest}
+```{r}
+# install and load the SPARK packageS 
+
+if(require(sparklyr) == FALSE){
+  install.packages('sparklyr')
+}
+
+sc <- spark_connect(master = "local")
+spark_web(sc)
+
+spark_NYC_Data<- sdf_copy_to(sc,nyc_Taxi_Weather_Data_sample,name="spark_NYC_weather_trainData")
+
+spark_NYC_Datatrain<- sdf_copy_to(sc,training_Nyc_Taxi_Weather_spark,name="spark_NYC_weather_trainData")
+
+spark_NYC_Datatest<- sdf_copy_to(sc,test_Nyc_Taxi_Weather_spark,name="spark_NYC_weather_testData")
+
+##Nyc_Taxi_Weather_formula = total_amount ~ trip_id + trip_duration + passenger_count + trip_distance + humidity + pressure + temperature + wind_direct +wind_speed
+#+pickup_datetime+weather_description
+rf_model <- spark_NYC_Datatrain %>%
+  ml_random_forest(description_of_totalamount ~  passenger_count+trip_duration+humidity+pressure+temperature+wind_direct+wind_speed, type = "classification")
+
+rf_model
+
+
+##Attributes check 
+
+summary(rf_model)
+rf_model$index_labels  
+rf_model$formula
+rf_model$finalModel
+
+
+## Prediction model using testing data set 
+
+rf_predict_ml <- ml_predict(rf_model, spark_NYC_Datatest) %>%
+  ft_string_indexer("description_of_totalamount", "description_of_totalamount_idx") %>%
+  collect
+
+# contingency table for results 
+
+table(rf_predict_ml$description_of_totalamount_idx, rf_predict_ml$prediction)
+
+## Confusion matrix for ML results.
+
+
+caret::confusionMatrix(as.factor(rf_predict_ml$description_of_totalamount_idx), as.factor(rf_predict_ml$prediction))
+
+
+caret::confusionMatrix(factor(rf_predict_ml$description_of_totalamount_idx, levels=1:10), factor( rf_predict_ml$prediction, levels=1:10))
+
+
+# Evaulate spark Random forest model
+
+ml_tree_feature_importance(sc = sc, model = rf_model)
+
+rf_test_df <- collect(rf_predict_ml)
+
+rf_test_df_factor <- as.factor(rf_test_df$prediction)
+
+## performance evaluaator
+
+pred <- ml_predict(rf_model, spark_NYC_Datatest)
+#ml_regression_evaluator(rf_predict_ml, label_col = "total_amount",spark_NYC_Datatest)
+ml_multiclass_classification_evaluator(pred)
+ 
+    
+```
+
+### 12. RMSE measure for liner model{#Evaluaion}
+```{r}
+
+control <- trainControl(method="cv",number=5)
+
+set.seed(7)
+
+fit <- train(total_amount ~ temperature+trip_duration+humidity+trip_distance+pressure+passenger_count+wind_direct+wind_speed, data =nyc_Taxi_Weather_Data_sample,method="lm", metric="RMSE", trControl=control)
+
+print(fit)
+
+
+```
+
+
+###13. Resampling{#Boot_Strapping}
+```{r}
+# get 95% confidence interval
+
+##Apply resampleing data set to predict results 
+
+head(results)
+str(results)
+
+# create a 70/30 training/test set split
+n_rows <- nrow(results)
+
+## Resampling using boot strapping 
+
+resample <- sample(nyc_Taxi_Weather_Data_sample, replace = TRUE)
+
+# Create a function to take a resample of the values, 
+# and then calculate the mean
+boot_mean <- function(original_vector, resample_vector) {
+    mean(original_vector[resample_vector])
+}
+
+nyc_Taxi_Weather_Data_sample_M <- as.matrix(Nyc_Taxi_Weather_minmax)
+# R is number of replications
+mean_results <- boot(nyc_Taxi_Weather_Data_sample_M, boot_mean, R = 100)
+
+# Load broom to get a tidy dataframe as output.
+tidy(mean_results)
+     
+```
+
+#### 13.1. Bootstrap 95% CI for R-Squared
+```{r}
+# function to obtain R-Squared from the data
+rsq <- function(formula, data, indices) {
+  d <- data[indices,] # allows boot to select sample
+  fit <- lm(formula, data=d)
+  return(summary(fit)$r.square)
+}
+# bootstrapping with 1000 replications
+
+results <- boot(data=nyc_Taxi_Weather_Data_sample, statistic=rsq,
+   R=1000, formula=total_amount ~ trip_id + trip_duration + passenger_count + trip_distance + humidity + pressure + temperature + wind_direct +wind_speed)
+
+# view results
+results
+plot(results)
+
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+s_training_idx_resample <- sample(n_rows, n_rows * 0.7)
+
+
+```
+
+#### 13.2. Another technique for Bootstrapping
+```{r}
+
+mean(nyc_Taxi_Weather_Data_sample$total_amount)
+
+resample_Ta<- sample(nyc_Taxi_Weather_Data_sample$total_amount,replace=TRUE)
+
+mean(resample_Ta)
+
+
+nyc_Taxi_Weather_Data_sample %>%
+  group_by(total_amount)%>%
+  mutate(means=mean(sample(total_amount,replace=TRUE)))%>%
+  ggplot(aes(means))+
+  geom_freqpoly()
+
+boot_mean <- function(x,i)
+{mean(x[i])}
+
+result <- boot(nyc_Taxi_Weather_Data_sample$total_amount,boot_mean,R=2000)
+result
+
+tidy(result)
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

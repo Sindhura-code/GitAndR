@@ -1,0 +1,387 @@
+---
+title: "Group_17_Data_Cleaning"
+author: "Alex Howell"
+date: "09/04/2021"
+output: html_document
+---
+
+Document compiled of initial data merging and data cleaning steps for Group 17.
+
+```{r}
+# Author: Alex H
+# weather data set merge
+library(tidyverse)
+library(lubridate)
+library(data.table)
+
+# import files
+weather_humidity <- read.csv("humidity.csv")
+weather_pressure <- read.csv("pressure.csv")
+weather_temperature <- read.csv("temperature.csv")
+weather_wind_direction <- read.csv("wind_direction.csv")
+weather_wind_speed <- read.csv("wind_speed.csv")
+weather_description <- read.csv("weather_description.csv")
+
+# update datatype
+weather_humidity$datetime <- ymd_hms(weather_humidity$datetime)
+weather_pressure$datetime <- ymd_hms(weather_pressure$datetime)
+weather_temperature$datetime <- ymd_hms(weather_temperature$datetime)
+weather_wind_direction$datetime <- ymd_hms(weather_wind_direction$datetime)
+weather_wind_speed$datetime <- ymd_hms(weather_wind_speed$datetime)
+weather_description$datetime <- ymd_hms(weather_description$datetime)
+
+# filter relevant dates
+nyc_humidity <- subset(weather_humidity, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+nyc_pressure <- subset(weather_pressure, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+nyc_temperature <- subset(weather_temperature, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+nyc_wind_direction <- subset(weather_wind_direction, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+nyc_wind_speed <- subset(weather_wind_speed, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+nyc_description <- subset(weather_description, datetime >= "2014-01-01 00:00:00" & datetime < "2014-02-01 00:00:00")
+
+# filter relevant city (NYC)
+nyc_humidity <- nyc_humidity[,c("datetime","New.York")]
+nyc_pressure <- nyc_pressure[,c("datetime","New.York")]
+nyc_temperature <- nyc_temperature[,c("datetime","New.York")]
+nyc_wind_direction <- nyc_wind_direction[,c("datetime","New.York")]
+nyc_wind_speed <- nyc_wind_speed[,c("datetime","New.York")]
+nyc_description <- nyc_description[,c("datetime","New.York")]
+
+# rename columns
+nyc_humidity <- rename(nyc_humidity, c(Date_Time = datetime, humidity = New.York))
+nyc_pressure <- rename(nyc_pressure, c(Date_Time = datetime, pressure = New.York))
+nyc_temperature <- rename(nyc_temperature, c(Date_Time = datetime, temperature = New.York))
+nyc_wind_direction <- rename(nyc_wind_direction, c(Date_Time = datetime, wind_direct = New.York))
+nyc_wind_speed <- rename(nyc_wind_speed, c(Date_Time = datetime, wind_speed = New.York))
+nyc_description <- rename(nyc_description, c(Date_Time = datetime, weather_description = New.York))
+
+# merge all datasets
+nyc_weather <- left_join(nyc_humidity, nyc_pressure, by = "Date_Time")
+nyc_weather <- left_join(nyc_weather, nyc_temperature, by = "Date_Time")
+nyc_weather <- left_join(nyc_weather, nyc_wind_direction, by = "Date_Time")
+nyc_weather <- left_join(nyc_weather, nyc_wind_speed, by = "Date_Time")
+nyc_weather <- left_join(nyc_weather, nyc_description, by = "Date_Time")
+
+# update datatype
+nyc_weather$weather_description <- as.factor(nyc_weather$weather_description)
+
+# Impute NA humidity
+master_nyc_weather_num <- select(nyc_weather, c(2,3,4,5,6))
+nyc_hum_lm1 <- lm(humidity ~ ., data=master_nyc_weather_num)
+master_nyc_weather_num[rowSums(is.na(master_nyc_weather_num)) > 0, ]
+humidity_val_134 <- round(209.294474 - 0.267206 * 996 + 0.538421 * 285.26 - 0.019920 * 175 - 2.529669 * 3)
+humidity_val_639 <- round(209.294474 - 0.267206 * 1004 + 0.538421 * 273.47 - 0.019920 * 270 - 2.529669 * 2)
+humidity_val_646 <- round(209.294474 - 0.267206 * 1010 + 0.538421 * 272.18 - 0.019920 * 320 - 2.529669 * 6)
+humidity_val_737 <- round(209.294474 - 0.267206 * 1023 + 0.538421 * 272.69 - 0.019920 * 0 - 2.529669 * 0)
+nyc_weather[134,2] <- humidity_val_134
+nyc_weather[639,2] <- humidity_val_639
+nyc_weather[646,2] <- humidity_val_646
+nyc_weather[737,2] <- humidity_val_737
+```
+
+```{r}
+# Author: Alex H
+# taxi data set
+
+# import file
+taxi_01_2014 <- read.csv("01_2014_Yellow_Taxi_Trip_Data.csv")
+
+# remove initial non-required columns from taxi_01_2014
+nyc_taxi <- taxi_01_2014[,c("pickup_datetime",
+                            "dropoff_datetime",
+                            # "store_and_fwd_flag", #REMOVE
+                            # "vendor_id",
+                            "passenger_count",
+                            "trip_distance",
+                            # "pickup_longitude", #REMOVE
+                            # "pickup_latitude", #REMOVE
+                            # "dropoff_longitude", #REMOVE
+                            # "dropoff_latitude", #REMOVE
+                            "fare_amount",
+                            "mta_tax",
+                            "tip_amount",
+                            "tolls_amount",
+                            "imp_surcharge",
+                            "total_amount",
+                            "payment_type",
+                            "extra" 
+                            # "rate_code" #REMOVE
+                            )]
+
+# Update data types
+nyc_taxi$pickup_datetime <- as.POSIXct(nyc_taxi$pickup_datetime, format="%m/%d/%Y %I:%M:%S %p",tz=Sys.timezone())
+nyc_taxi$dropoff_datetime <- as.POSIXct(nyc_taxi$dropoff_datetime, format="%m/%d/%Y %I:%M:%S %p",tz=Sys.timezone())
+nyc_taxi$payment_type <- as.factor(nyc_taxi$payment_type)
+
+# add trip_time
+nyc_taxi <- transform(nyc_taxi, trip_duration = dropoff_datetime - pickup_datetime)
+# format to numeric (seconds)
+nyc_taxi$trip_duration <- as.numeric(nyc_taxi$trip_duration)
+
+# add trip_id
+nyc_taxi$trip_id <- seq.int(nrow(nyc_taxi)) 
+
+# remove and reorder
+nyc_taxi_2 <- nyc_taxi[,c("trip_id",
+                          "pickup_datetime",
+                          "trip_duration",
+                          # "dropoff_datetime", #REMOVE
+                          "passenger_count",
+                          "trip_distance",
+                          # "fare_amount", #REMOVE
+                          # "mta_tax", #REMOVE
+                          # "tip_amount", #REMOVE
+                          # "tolls_amount", #REMOVE
+                          # "imp_surcharge", #REMOVE
+                          "total_amount",
+                          "payment_type"
+                          # "extra" #REMOVE
+)]
+
+# Create 3m sample
+set.seed(1)
+nyc_taxi_samp_1 <- sample_n(nyc_taxi_2, 3000000)
+```
+
+```{r}
+# Author: Alex H
+# Merge taxi and weather datasets
+# SAMPLE 1
+taxi_samp_1 <- data.table(nyc_taxi_samp_1)
+taxi_weath <- data.table(nyc_weather)
+setkey(taxi_weath, Date_Time)
+setkey(taxi_samp_1, pickup_datetime)
+combined_samp_1 <- taxi_weath[taxi_samp_1, roll = "nearest" ]
+# Reformat
+combined_samp_1 <- rename(combined_samp_1, c(pickup_datetime = Date_Time))
+combined_samp_1 <- combined_samp_1[,c(8,1,9,10,11,12,13,2,3,4,5,6,7)]
+# Write as csv
+write.csv(combined_samp_1, "030421_nyc_taxi_sample_1.csv")
+master_nyc_1 <- combined_samp_1
+```
+
+```{r}
+df <- master_nyc_1
+```
+
+```{r}
+# Author: Batu C
+# Data Cleaning
+
+# Assigning df to a different variable and examining variables. 
+str(df)
+
+df$payment_type <- as.factor(df$payment_type)
+df$weather_description <- as.factor(df$weather_description)
+          
+summary(df$pickup_datetime)
+summary(df$trip_duration) # Problem 
+summary(df$passenger_count) # Problem
+summary(df$trip_distance)
+summary(df$total_amount) # Problem
+summary(df$payment_type)
+summary(df$humidity) # We might not need it
+summary(df$pressure) # We might not need it
+summary(df$temperature)
+summary(df$wind_direct) # Problem, we might not need it
+summary(df$wind_speed) # Problem, we might not need it
+summary(df$weather_description) 
+
+# Data cleaning continues 
+# Variables need to be looked at; trip duration, passenger count, total amount, wind direction and wind speed.
+
+boxplot(df$trip_duration) # There are negative variables, need to be removed. Also very high values in terms of duration.
+boxplot(df$passenger_count) # Few impossible passenger count numbers.
+boxplot(df$total_amount) # Too many high amount of price, needs to be removed.
+boxplot(df$wind_direct) # Too many outliers.
+boxplot(df$wind_speed) # Few outliers.
+
+df <- df[df$trip_duration >= 0, ]
+df <- df[df$passenger_count <= 9, ]
+df <- df[df$trip_distance > 0, ]
+
+# Max journey time and max passenger count + missing values
+# Trip duration in seconds. 3 hours considered as limit to taxi journey. Thus;
+df <- df[df$trip_duration <= 10800, ]
+df <- df[df$passenger_count > 0, ]
+
+# According to NY taxi rules, maximum number of passengers in taxi is 6.
+df <- df[df$passenger_count <= 6, ]
+
+# https://www1.nyc.gov/site/tlc/passengers/passenger-frequently-asked-questions.page#:~:text=The%20maximum%20amount%20of%20passengers,of%20an%20adult%20passenger%20seated 
+
+# Checking for missing values, there are none.
+sum(is.na(df$trip_duration))
+sum(is.na(df$passenger_count))
+```
+
+```{r}
+TW_data <- df
+```
+
+```{r}
+# Author: Ramya S
+# Data Cleaning
+summary(TW_data)
+
+# Running skim function to verify missingness in the data
+library(skimr)
+skim(TW_data)
+
+# No missing values are identified in the dataset.
+sum(is.na(TW_data))
+
+# Checking duplicates
+duplicated <- duplicated(TW_data$trip_id)
+duplicated
+TW_data[(which(duplicated)),]
+
+#No duplicate observations were found in the data set.
+
+TW_data_clean <- unique(TW_data)
+dim(TW_data_clean)
+# Confirms no duplicates were found in the dataset.
+
+# Weather data outlier identification
+
+#Humidity
+boxplot(TW_data$humidity,
+  ylab = "humidity",
+  main = "Boxplot of Humidity"
+)
+
+#Pressure
+boxplot(TW_data$pressure,
+  ylab = "Pressure",
+  main = "Boxplot of Pressure"
+)
+
+#Temperature
+boxplot(TW_data$temperature,
+  ylab = "Temperature",
+  main = "Boxplot of Temperature"
+)
+#boxplot.stats(TW_data$temperature)$out
+
+#Wind direction
+boxplot(TW_data$wind_direct,
+  ylab = "Wind direction",
+  main = "Boxplot of Wind direction"
+)
+
+#Wind speed
+boxplot(TW_data$wind_speed,
+  ylab = "wind speed",
+  main = "Boxplot of wind speed"
+)
+
+# Left or negative skewness is observed with Humidity data. As Humidity can be 30, no outliers need to be removed from this variable. Few outliers are identified for Wind speed and wind direction variables and they need to be reviewed before we proceed with further model analysis.
+```
+
+```{r}
+Taxi_Data <- TW_data
+```
+
+```{r}
+# Author: Sindhura R
+# Data Cleaning
+head(Taxi_Data)
+str(Taxi_Data)
+colnames(Taxi_Data)
+
+# library(dplyr)
+# Detecting na values in the Taxi data set in a table format 
+is.na(Taxi_Data) %>% table()
+any(is.na(Taxi_Data))
+ 
+# Calculating the percentage of Na values and there is no values found as such
+Taxi_Data_NA_count <- apply(is.na(Taxi_Data),2,sum)
+
+Taxi_Data_NA_perc <- Taxi_Data_NA_count / dim(Taxi_Data)[1] * 100
+Taxi_Data_NA_perc
+
+Taxi_Data_noNA <- na.omit(Taxi_Data)
+
+# finding unique values 
+Taxi_Data_noNA_nodup <- unique(Taxi_Data)
+
+# There is no outliers found in the trp_id column using box plot method 
+Taxi_Data_boxplot4 <- boxplot(Taxi_Data_noNA_nodup$total_amount)
+min_total_amount_outlier <- min(Taxi_Data_boxplot4$out)
+#Taxi_Data_clean <- Taxi_Data_clean[Taxi_Data_clean$trip_distance < min_total_amount_outlier, ] 
+
+#Detect outliers  - Univariate approach
+head(Taxi_Data$trip_duration)
+
+outlier_values <- boxplot.stats(Taxi_Data$trip_duration )$out  # outlier values.
+
+boxplot(Taxi_Data$trip_duration, main="Trip Duration", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+
+# Bivariate approach
+
+# For categorical variable
+# boxplot(passenger_count   ~ pickup_datetime  , data=Taxi_Data, main="Taxi time with duration")  
+
+#Multivariate Model Approach using cooks distance for nmerical variables using liner regressing 
+
+mod <- lm(trip_id  ~ ., data=Taxi_Data)
+cooksd <- cooks.distance(mod)
+```
+
+```{r}
+nyc_taxi_samp_final <- Taxi_Data
+```
+
+```{r}
+# Author: Alex H
+# Create and distribute samples for EDA and ML
+
+# Create sample
+# Alex
+set.seed(10)
+nyc_taxi_samp_ah <- sample_n(nyc_taxi_samp_final, 600000)
+write.csv(nyc_taxi_samp_ah, "nyc_taxi_samp_ah.csv")
+
+# Batu
+set.seed(20)
+nyc_taxi_samp_bc <- sample_n(nyc_taxi_samp_final, 600000)
+write.csv(nyc_taxi_samp_bc, "nyc_taxi_samp_bc.csv")
+
+# Ramya
+set.seed(30)
+nyc_taxi_samp_rs <- sample_n(nyc_taxi_samp_final, 600000)
+write.csv(nyc_taxi_samp_rs, "nyc_taxi_samp_rs.csv")
+
+# Senor
+set.seed(40)
+nyc_taxi_samp_sa <- sample_n(nyc_taxi_samp_final, 600000)
+write.csv(nyc_taxi_samp_sa, "nyc_taxi_samp_sa.csv")
+
+# Sindhura
+set.seed(50)
+nyc_taxi_samp_sr <- sample_n(nyc_taxi_samp_final, 600000)
+write.csv(nyc_taxi_samp_sr, "nyc_taxi_samp_sr.csv")
+```
+
+```{r}
+# Adding Categorising Columns
+# Author: Batu C / Sindhura R / Senor A
+
+# Assign df to cleandf2
+# cleandf2 <- XXX
+
+## Creating breaks
+breaks <- hour(hm("00:00", "6:00", "12:00", "18:00", "23:59"))
+## Labels for the breaks
+labels <- c("Night", "Morning", "Afternoon", "Evening")
+cleandf2$time_of_day <- cut(x=hour(cleandf2$pickup_datetime), breaks = breaks, labels = labels, include.lowest=TRUE)
+
+## We will create trip_duration categories of ShortJourney=<900, MidJourney=900-3600, LongJourney=<=3600
+cartrip_duration <- cut(cleandf2$trip_duration, breaks = c(0, 900, 3600, Inf), labels = c("ShortJourney", "MidJourney", "LongJourney"))
+cleandf2$description_of_journey <- cut(cleandf2$trip_duration, breaks = c(0, 900, 3600, Inf), labels = c("ShortJourney", "MidJourney", "LongJourney"))
+
+## We will create total_amount categories of LowPrice- =<10.00, ModeratePrice=10.00-20.00, ExpensivePrice- =<20.00
+cartotal_amount <- cut(cleandf2$total_amount, breaks = c(0, 10.00, 20.00, Inf), labels = c("LowPrice", "ModeratePrice", "ExpensivePrice"))
+cleandf2$description_of_totalamountprice <- cut(cleandf2$total_amount, breaks = c(0, 10.00, 20.00, Inf), labels = c("LowPrice", "ModeratePrice", "ExpensivePrice"))
+```
+

@@ -1,0 +1,84 @@
+---
+title: "Data Cleaning individual on 6L"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+## Data Cleaning (6 lacs records)
+
+```{r  echo=FALSE}
+ 
+
+Nyc_Taxi_Weather_Data <- read.csv("nyc_taxi_samp_sr.csv")
+summary(Nyc_Taxi_Weather_Data)
+
+#Descriptive data analysis 
+
+head(Nyc_Taxi_Weather_Data)
+
+# Check structure of the data set 
+
+str(Nyc_Taxi_Weather_Data)
+
+# Check final column names 
+
+colnames(Nyc_Taxi_Weather_Data)
+
+
+library(dplyr)
+
+# Check NA values , missing  and null values 
+
+is.na(Nyc_Taxi_Weather_Data) %>% table()
+
+any(is.na(Nyc_Taxi_Weather_Data))
+ 
+Nyc_Taxi_WeatherData_NA_count <- apply(is.na(Nyc_Taxi_Weather_Data),2,sum)
+
+Nyc_Taxi_Weather_Data_NA_perc <- Nyc_Taxi_WeatherData_NA_count / dim(Nyc_Taxi_Weather_Data)[1] * 100
+
+Nyc_Taxi_Weather_Data_NA_perc
+
+Nyc_Taxi_Weather_Data_noNA <- na.omit(Nyc_Taxi_Weather_Data)
+
+Nyc_Taxi_Weather_Data_noNA_nodup <- unique(Nyc_Taxi_Weather_Data)
+
+
+# Check outlier using box plot 
+
+outlier_values <- boxplot.stats(Nyc_Taxi_Weather_Data$trip_duration )$out  # outlier values.
+boxplot(Nyc_Taxi_Weather_Data$trip_duration, main="Trip Duration", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+
+# summary commmand for descriptive stats 
+
+summary(Nyc_Taxi_Weather_Data)
+
+str(Nyc_Taxi_Weather_Data)
+
+Nyc_Taxi_Weather_Data$payment_type <- as.factor(Nyc_Taxi_Weather_Data$payment_type)
+
+
+Nyc_Taxi_Weather_Data$weather_description <- as.factor(Nyc_Taxi_Weather_Data$weather_description)
+
+opar <- par()
+par(mfrow = c(2,3))
+hist(Nyc_Taxi_Weather_Data[, 1], main = names(Nyc_Taxi_Weather_Data)[1], xlab = names(Nyc_Taxi_Weather_Data)[1], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 2], main = names(Nyc_Taxi_Weather_Data)[2], xlab = names(Nyc_Taxi_Weather_Data)[2], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 3], main = names(Nyc_Taxi_Weather_Data)[3], xlab = names(Nyc_Taxi_Weather_Data)[3], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 4], main = names(Nyc_Taxi_Weather_Data)[4], xlab = names(Nyc_Taxi_Weather_Data)[4], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 5], main = names(Nyc_Taxi_Weather_Data)[5], xlab = names(Nyc_Taxi_Weather_Data)[5], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 6], main = names(Nyc_Taxi_Weather_Data)[6], xlab = names(Nyc_Taxi_Weather_Data)[6], xlim = c(0,100))
+par(opar)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

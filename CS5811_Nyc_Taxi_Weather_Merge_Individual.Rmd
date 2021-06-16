@@ -1,0 +1,634 @@
+---
+title: "Data Merging Individual"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+### CS5706/MA5638
+### CourseWork
+#### Tutorial
+
+***
+```{r}
+
+
+if(require(tidyverse) == FALSE){
+  install.packages('tidyverse')
+}
+
+# Raw Weather data set
+Temparature <- read.csv("weather_description.csv")
+
+colnames(Temparature)
+
+# Reading each individual file and add it to the main weather data set
+
+Temparature_data <- subset(Temparature, select = c ("datetime","New.York"))
+
+humidity <- read.csv("humidity.csv")
+
+colnames(humidity)
+
+Temparature_data$Humidity <- subset(humidity, select = c ("New.York"))
+
+pressure <- read.csv("pressure.csv")
+
+colnames(pressure)
+
+Temparature_data$Pressure <- subset(pressure, select = c ("New.York"))
+
+pressure <- read.csv("pressure.csv")
+
+colnames(pressure)
+
+Temparature_data$Pressure <- subset(pressure, select = c ("New.York"))
+
+temperature <- read.csv("temperature.csv")
+
+Temparature_data$Temperature <- subset(temperature, select = c ("New.York"))
+
+wind_direction <- read.csv("wind_direction.csv")
+
+Temparature_data$Wind_Direction <- subset(wind_direction, select = c ("New.York"))
+
+wind_speed <- read.csv("wind_speed.csv")
+
+Temparature_data$Wind_Speed <- subset(wind_speed, select = c ("New.York"))
+
+colnames(Temparature_data)
+
+names(Temparature_data)[names(Temparature_data) == "datetime"] <- "DateTime"
+
+
+names(Temparature_data)[names(Temparature_data) == "New.York"] <- "Weather_Description"
+Temparature_data$`Date&Time`
+
+#format(as.Date(Temparature_data$Date&Time, format="%d/%m/%Y"),"%Y")
+
+nrow(Temparature_data_2014)
+object.size(Temparature_data_2014)
+library("lubridate")
+
+## check the data duraion of one year 2014
+
+Temparature_data_2014<- Temparature_data[Temparature_data$DateTime >= "2014-01-01" & Temparature_data$DateTime <= "2014-12-31",]
+
+system.time(length(readLines(url)))
+
+system.time(length(readLines(Temparature_data)))
+
+library("readr")
+
+nrow(Temparature_data_2014)
+
+#write.csv(Temparature_data_2014,path="C://Users//sindh//Downloads//OneDrive_1_3-9-2021//Temparature_data_2014.csv")
+
+csv_Temp <- Temparature_data_2014
+
+object.size(csv_Temp)
+
+write.csv(csv_Temp,"Temptest.csv", row.names = FALSE )
+
+check <- read.csv("Temptest.csv")
+
+## Limit number of rows
+
+subSet <- fread(csv.name, skip = "2015-06-12 15:14:39", showProgress = FALSE)
+sprintf("Number of lines in data set with skipped lines: %s", nrow(subSet))
+
+?write_csv
+?write.csv
+Taxi_data <- read.csv("01_2014_Yellow_Taxi_Trip_Data.csv")
+
+str(Taxi_data)
+
+Taxi_data_Jan <- subset(Taxi_data, pickup_datetime > "01/01/2014 12:00:00 AM" & pickup_datetime < "01/31/2014 12:00:00 AM")
+
+install.packages("dplyr")
+install.packages("lubridate")
+
+mutate(Date = Taxi_data$pickup_datetime )
+
+mutate(date=as.date(date,format="%m,"))
+
+Taxi_data$Pick_Date <- as.Date(Taxi_data$pickup_datetime,
+                                     format = "%m/%d/%y")
+
+table(Taxi_data$Pick_Date)
+
+
+Taxi_data_Jan <- subset(Taxi_data, Pick_Date > "01/01/2014" & pickup_datetime < "01/31/2014")
+
+head(Taxi_data$Pick_Date)
+
+
+```
+
+## Dta cleaning with initial data set 
+
+```{r}
+
+Merged_dataset <- read.csv("C://Term2//CS5811 Distributed Data Analysis(IntegratedHPC&ML//combined_samp_1m.csv")
+
+# Excluded the first column for analysis
+
+str(Merged_dataset[-1])
+
+# Stats of each column 
+
+summary(Merged_dataset[-1])
+
+# "PICKUP_TIME" , "DROPOFF_TIME" : Covert char data type to datetime
+# "VENDOR_ID" : Covert to factor
+# "PASS_COUNT", "TRIP_DISTANCE"  "PICKUP_LONG"    "PICKUP_LAT"     "DROPOFF_LONG"   
+# "DROPOFF_LAT"  : No change in data type 
+# "FARE_COST"      "TAX_COST"       "TIP_COST"       "TOLLS_COST"     "SURCHARGE_COST" : No change in type
+# "EXTRA_COST" : As per the summary stats , all the data is NA's so EXclude this column #TOTAL_COST"     
+# "PAYMENT_TYPE" :Covert as factor 
+# "HUMIDITY" "PRESSURE" "TEMP" "WIND_DIRECT"    "WIND_SPEED" :No Change
+# "DESC"  : Covert as factor
+
+# Contingency table of counts at each combination of factor levels 
+
+## check the factor variable levels
+
+table(Merged_dataset$VENDOR_ID)
+
+table(Merged_dataset$PAYMENT_TYPE)
+
+table(Merged_dataset$DESC)
+
+# Covert VENDOR_ID, PAYMENT_TYPE & DESC to factors
+
+Merged_dataset$VENDOR_ID <- as.factor(Merged_dataset$VENDOR_ID)
+
+
+Merged_dataset$PAYMENT_TYPE <- as.factor(Merged_dataset$PAYMENT_TYPE)
+
+
+Merged_dataset$DESC <- as.factor(Merged_dataset$DESC)
+
+### 3. get a summary table of each numerical variables
+
+apply(Merged_dataset[,c("TAX_COST","TIP_COST","TOLLS_COST","SURCHARGE_COST")], 2, summary)
+
+# Get year from Pickup_Time
+
+library("lubridate")
+
+date <-  as.POSIXct(Merged_dataset$PICKUP_TIME, format = "%Y-%m-%d %H:%M:%S")
+
+str(Merged_dataset[-1])
+
+format(date, format="%Y")
+
+format(date, format="%H")
+
+head(Merged_dataset)
+
+# checking if the TOTAL_COST is equal to the sum of FARE_COST,TAX_COST","TIP_COST","TOLLS_COST","SURCHARGE_COST
+
+# Total cost is not equal to the sum of FARE_COST,TAX_COST,TIP_COST,TOLLS_COST,SURCHARGE_COST so need to keep all these 5 columns for analysis
+
+attach(Merged_dataset)
+sum(FARE_COST,TAX_COST,TIP_COST,TOLLS_COST,SURCHARGE_COST,na.rm=TRUE)
+sum(TOTAL_COST)
+
+# List of columns considered for analysis
+#PICKUP_TIME ,DROPOFF_TIME,VENDOR_ID,PASS_COUNT,TRIP_DISTANCE,PICKUP_LONG,PICKUP_LAT,DROPOFF_LONG,DROPOFF_LAT,
+#FARE_COST,TAX_COST,TIP_COST,TOLLS_COST,SURCHARGE_COST,TOTAL_COST
+#PAYMENT_TYPE
+#HUMIDITY,PRESSURE,TEMP,WIND_DIREC,WIND_SPEEDDESC
+
+apply(Merged_dataset[,c("FARE_COST","TAX_COST","TIP_COST","TOLLS_COST","SURCHARGE_COST","EXTRA_COST","TOTAL_COST")], 2, sum)
+
+#Remove null ,Na's ,NaN values
+
+#data_clean <- na.omit(Merged_dataset)
+
+library(dplyr)
+
+Clean_dataset <- filter(Merged_dataset, PASS_COUNT > 0,PICKUP_LAT > 0 , DROPOFF_LAT >0 , TRIP_DISTANCE >0 )
+
+Clean_dataset_F <- Clean_dataset[-16]
+Clean_dataset_F <- Clean_dataset[-1]
+colnames(Clean_dataset)
+
+# Finding outliners 
+
+
+
+# check the Longitude and Latitude values
+
+Pick_Lat_Log_data <- subset(Merged_dataset, !is.na(PICKUP_LONG) & !is.na(PICKUP_LAT))
+Drop_Lat_Log_data <- subset(Merged_dataset, !is.na(DROPOFF_LONG) & !is.na(DROPOFF_LAT))
+dim(Pick_Lat_Log_data) - dim(Drop_Lat_Log_data)
+
+library(maptools)
+data(wrld_simpl)
+plot(wrld_simpl, xlim=c(-80,70), ylim=c(-60,10), axes=TRUE, col="light yellow")
+    # restore the box around the map
+box()
+
+    # add the points
+points(Pick_Lat_Log_data$PICKUP_LONG, Pick_Lat_Log_data$PICKUP_LAT, col='orange', pch=20, cex=0.75)
+    # plot points again to add a border, for better visibility
+points(Pick_Lat_Log_data$PICKUP_LONG, Pick_Lat_Log_data$PICKUP_LAT, col='red', cex=0.75)
+
+# finding very short trip data 
+
+ #Finding trip duration 
+
+str(PICKUP_TIME ,DROPOFF_TIME)
+library(lubridate)
+
+PICKUP_TIME_format  <-  as.POSIXct(Clean_dataset_F$PICKUP_TIME, format = "%Y-%m-%d %H:%M:%S",tz="UTC")
+Drop_TIME_format  <-  as.POSIXct(Clean_dataset_F$DROPOFF_TIME, format = "%Y-%m-%d %H:%M:%S",tz="UTC")
+
+str(Drop_TIME_format)
+
+print(as.POSIXct(PICKUP_TIME, format='%I:%M %p'))
+
+?POSIXct
+
+library(data.table)
+
+dt1 <- data.table(date = as.IDate(Clean_dataset_F$PICKUP_TIME))
+
+dt2 <- data.table(date = as.IDate(Clean_dataset_F$DROPOFF_TIME))
+
+Clean_dataset_F$PICKUP_TIME <- mdy_hm(PICKUP_TIME, tz = "US/Eastern")
+
+if(dt2 >= dt1 ){
+  Clean_dataset_F$TRIP_Duration = seconds_to_period(Drop_TIME_format - PICKUP_TIME_format)
+}
+
+am(Clean_dataset_F$PICKUP_TIME)
+
+View(Clean_dataset_F)
+
+Clean_dataset_F$test <- difftime(Clean_dataset_F$DROPOFF_TIME,Clean_dataset_F$PICKUP_TIM)
+
+dt[, YR := 0.0 ]
+
+Clean_dataset_F$check <- as.ITime(Clean_dataset_F$DROPOFF_TIME)
+Clean_dataset_F$check1 <- as.ITime(Clean_dataset_F$DROPOFF_TIME)
+
+Clean_dataset_F$checktotal <- difftime(Clean_dataset_F$check1,Clean_dataset_F$check)
+
+dt[ date >= as.IDate("2002-09-01") & date <= as.IDate("2003-08-31"), YR := 1 ]
+dt[ date >= as.IDate("2003-09-01") & date <= as.IDate("2004-08-31"), YR := 2 ]
+dt[ date >= as.IDate("2004-09-01") & date <= as.IDate("2005-08-31"), YR := 3 ]
+
+diffs <- difftime(Drop_TIME_format - PICKUP_TIME_format,units="hours")
+
+ #Merged_dataset$TRIP_Duration = seconds_to_period( Merged_dataset$DROPOFF_TIME - Merged_dataset$PICKUP_TIME)
+
+
+Clean_dataset_F$Trip_Hours = Clean_dataset_F$TRIP_Duration@hour
+Clean_dataset_F$Trip_minute = Clean_dataset_F$TRIP_Duration@minute
+
+Clean_dataset_F$TRIP_Duration$TRIP_IN_HOURS = format(PICKUP_TIME_format, format="%H")
+
+Clean_dataset_F$Trip_minute_inter <- interval(Clean_dataset_F$PICKUP_TIME, Clean_dataset_F$DROPOFF_TIME) %/% hours(1)
+
+str(Clean_dataset_F)
+
+format(date, format="%H")
+str(Merged_dataset$TRIP_Duration.Data)
+
+
+test_negative %>%
+  filter(Clean_dataset_F$Trip_Hours < 0 && Clean_dataset_F$Trip_minute  < 0 )
+#td@hour, minute(td), second(td))
+
+# There is negative values in the Trip duraion column
+
+Negative_Trip_Duration <- Clean_dataset_F[Clean_dataset_F$Trip_Hours < 0, ]
+
+Negative_Trip_Duration$testime <-  Negative_Trip_Duration$PICKUP_TIME - Negative_Trip_Duration$DROPOFF_TIME
+
+View(Negative_Trip_Duration)
+
+dim(Negative_Trip_Duration)
+
+str(Merged_dataset)
+# Pick_date time always before than drop off time
+
+Merged_dataset %>%
+PICKUP_TIME < DROPOFF_TIME
+
+
+# Random sample subset of train data for EDA, set seed to be reproduceable
+
+set.seed(1999)
+# create a 70/30 training/test set split
+n_rows <- nrow(Merged_dataset)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_data <- Merged_dataset[training_idx,]
+test_data <- Merged_dataset[-training_idx,]
+
+library(ggplot2)
+require(GGally)
+# Plot sample train data
+ggpairs(training_data[,c("VENDOR_ID", "PASS_COUNT", "TOTAL_COST","TRIP_Duration")], upper = list(continuous = "points", combo = "box"), lower = list(continuous = "points", combo = "box"))
+
+# Add a column of log of the duration 
+Merged_dataset <-  Merged_dataset %>%
+    mutate(logduration=log(TRIP_Duration+1))
+# Plot the  log duration for comparison
+g <- ggplot(data=Merged_dataset,aes(logduration))
+g + geom_histogram(col="pink",bins=100) + 
+    labs(title="Histogram of Trip Duration")
+
+# Passengers
+
+kable(summary(Merged_dataset$PASS_COUNT),format="html")
+
+g <- ggplot(training_data,aes(as.factor(PASS_COUNT), TRIP_Duration, color = PASS_COUNT))
+g +  geom_boxplot() +
+    scale_y_log10() +
+    theme(legend.position = "none") +
+    facet_wrap(~ VENDOR_ID) +
+    labs(title = "Trip Duration by Number of Passengers", x = "Number of passengers",y= "Trip duration (s)")
+
+
+# Convert the datetime variables with class POSIXct
+training_data$PICKUP_TIME <- as.POSIXct(training_data$PICKUP_TIME)
+# ScatterPlot the pick up date and time against trip_duration on trainsample
+g <- ggplot(trainsample, aes(pickup_datetime,trip_duration,colour=vendor_id)) 
+g + geom_point() +
+    labs(title = "Pickup dates and time and Trip Duration",x="Pick up date and time",y="Trip duration (seconds)")
+
+# checking correlation
+
+cor(Clean_dataset_F, method = "pearson", use = "complete.obs")
+res <- cor(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)],method = "pearson")
+
+round(res, 2)
+
+library("Hmisc")
+res2 <- rcorr(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)], type = c("pearson","spearman"))
+
+res3 <- rcorr(as.matrix(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)]))
+res3
+
+# Extract the correlation coefficients
+res$r
+# Extract p-values
+res3$P
+
+symnum(res, abbr.colnames = FALSE)
+library(Hmisc)
+flattenCorrMatrix(res3$r, res3$P)
+
+install.packages("corrplot")
+library("corrplot")
+sum(is.infinite(Clean_dataset_F))
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+is.na(Clean_dataset_F$HUMIDITY) %>% table()
+is.infinite(Clean_dataset_F$HUMIDITY) %>% table()
+
+Clean_dataset_F$HUMIDITY[is.na(Clean_dataset_F$HUMIDITY)] <- mean(Clean_dataset_F$HUMIDITY, na.rm = TRUE) 
+
+#cor(Clean_dataset_F, method = "pearson", use = "complete.obs")
+res <- cor(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)],method = "pearson")
+
+plot(res)
+
+mypr <- prcomp(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)],scale=TRUE)
+
+
+summary(mypr)
+plot(mypr,type="l")
+
+biplot(mypr,sclae=0)
+
+plot(Clean_dataset_F$PASS_COUNT,Clean_dataset_F$FARE_COST)
+
+plot(scale(Clean_dataset_F$PASS_COUNT),scale(Clean_dataset_F$FARE_COST))
+
+which(is.na(Clean_dataset_F$HUMIDITY))
+res
+Clean_dataset_F_drop <-Clean_dataset_F %>%
+na.omit()
+```
+
+
+```{r}
+dim(Clean_dataset_F_drop)
+```
+
+
+```{r}
+Clean_dataset_F %>%
+filter(Clean_dataset_F$HUMIDITY=='NA')
+
+
+set
+install.packages(("PerformanceAnalytics"))
+library("PerformanceAnalytics")
+chart.Correlation(Clean_dataset_F[sapply(Clean_dataset_F,is.numeric)], histogram=TRUE, pch=19)
+
+
+
+```
+
+```{r}
+#Referenes 
+#https://rspatial.org/raster/sdm/2_sdm_occdata.html
+
+#https://rstudio-pubs-static.s3.amazonaws.com/298073_df18c75025884a389091278b481781fe.html
+
+
+library(data.table)
+library(knitr)
+library(ggplot2)
+library(GGally)
+library(ggmap)
+library(maps)
+library(mapdata)
+library(mapview)
+library(leaflet)
+library(dplyr)
+library(taRifx)
+
+```
+
+```{r}
+
+```
+
+```{r}
+Taxi_Data = read.csv('C:/Users/sindh/Downloads/OneDrive_1_4-8-2021/030421_nyc_taxi_sample_1.csv')
+
+#Weather_Data = read.csv('C:/Users/sindh/Downloads/OneDrive_1_4-6-2021/030421_nyc_weather.csv')
+
+head(Taxi_Data)
+head(Weather_Data)
+str(Taxi_Data)
+colnames(Taxi_Data)
+
+#joined_df <- merge(Taxi_Data, Weather_Data, by.x = "pickup_datetime", 
+            # by.y = "Date_Time", all.x = TRUE, all.y = FALSE)
+#joined_df_Y <- merge(Taxi_Data, Weather_Data, by.x = "pickup_datetime", 
+           #  by.y = "Date_Time", all.x = FALSE, all.y = TRUE)
+
+#Detect outliers  - Univariate approach
+
+head(Taxi_Data$trip_duration)
+
+outlier_values <- boxplot.stats(Taxi_Data$trip_duration )$out  # outlier values.
+
+boxplot(Taxi_Data$trip_duration, main="Trip Duration", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+
+#Bivariate approach
+
+# For categorical variable
+
+boxplot(passenger_count   ~ pickup_datetime  , data=Taxi_Data, main="Taxi time with duration") 
+
+# clear pattern is noticeable.
+
+
+#Multivariate Model Approach
+
+library(dplyr)
+
+is.na(Taxi_Data) %>% table()
+
+any(is.na(Taxi_Data))
+ 
+Taxi_Data_NA_count <- apply(is.na(Taxi_Data),2,sum)
+
+Taxi_Data_NA_perc <- Taxi_Data_NA_count / dim(Taxi_Data)[1] * 100
+Taxi_Data_NA_perc
+
+Taxi_Data_noNA <- na.omit(Taxi_Data)
+
+Taxi_Data_noNA_nodup <- unique(Taxi_Data)
+
+#boxplot(Taxi_Data_noNA_nodup$trip_duration)
+
+# There is no outliers found in the trp_id column
+
+Taxi_Data_boxplot4 <- boxplot(Taxi_Data_noNA_nodup$total_amount)
+min_total_amount_outlier <- min(Taxi_Data_boxplot4$out)
+Taxi_Data_clean <- Taxi_Data_clean[Taxi_Data_clean$trip_distance < min_total_amount_outlier, ]
+
+
+mod <- lm(trip_id  ~ ., data=Taxi_Data)
+cooksd <- cooks.distance(mod)
+
+str(Taxi_Data)`
+
+
+```
+
+
+
+```{r}
+
+#Final data set
+
+Nyc_Taxi_Weather_Data <- read.csv('C:/Users/sindh/Downloads/nyc_taxi_samp_sr.csv')
+
+#Descriptive data analysis 
+
+head(Nyc_Taxi_Weather_Data)
+
+# Check structure of the data set 
+
+str(Nyc_Taxi_Weather_Data)
+
+# Check finalcolumn names 
+
+colnames(Nyc_Taxi_Weather_Data)
+
+
+library(dplyr)
+
+# Check NA values , missing  and null values 
+
+is.na(Nyc_Taxi_Weather_Data) %>% table()
+
+any(is.na(Nyc_Taxi_Weather_Data))
+ 
+Nyc_Taxi_WeatherData_NA_count <- apply(is.na(Nyc_Taxi_Weather_Data),2,sum)
+
+Nyc_Taxi_Weather_Data_NA_perc <- Nyc_Taxi_WeatherData_NA_count / dim(Nyc_Taxi_Weather_Data)[1] * 100
+
+Nyc_Taxi_Weather_Data_NA_perc
+
+Nyc_Taxi_Weather_Data_noNA <- na.omit(Nyc_Taxi_Weather_Data)
+
+Nyc_Taxi_Weather_Data_noNA_nodup <- unique(Nyc_Taxi_Weather_Data)
+
+
+# Check outlier using box plot 
+
+outlier_values <- boxplot.stats(Nyc_Taxi_Weather_Data$trip_duration )$out  # outlier values.
+boxplot(Nyc_Taxi_Weather_Data$trip_duration, main="Trip Duration", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+
+# summary commmand for descriptive stats 
+
+summary(Nyc_Taxi_Weather_Data)
+
+str(Nyc_Taxi_Weather_Data)
+
+Nyc_Taxi_Weather_Data$payment_type <- as.factor(Nyc_Taxi_Weather_Data$payment_type)
+
+
+Nyc_Taxi_Weather_Data$weather_description <- as.factor(Nyc_Taxi_Weather_Data$weather_description)
+
+opar <- par()
+par(mfrow = c(2,3))
+hist(Nyc_Taxi_Weather_Data[, 1], main = names(Nyc_Taxi_Weather_Data)[1], xlab = names(Nyc_Taxi_Weather_Data)[1], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 2], main = names(Nyc_Taxi_Weather_Data)[2], xlab = names(Nyc_Taxi_Weather_Data)[2], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 3], main = names(Nyc_Taxi_Weather_Data)[3], xlab = names(Nyc_Taxi_Weather_Data)[3], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 4], main = names(Nyc_Taxi_Weather_Data)[4], xlab = names(Nyc_Taxi_Weather_Data)[4], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 5], main = names(Nyc_Taxi_Weather_Data)[5], xlab = names(Nyc_Taxi_Weather_Data)[5], xlim = c(0,100))
+hist(Nyc_Taxi_Weather_Data[, 6], main = names(Nyc_Taxi_Weather_Data)[6], xlab = names(Nyc_Taxi_Weather_Data)[6], xlim = c(0,100))
+par(opar)
+
+
+# PCA analysis 
+
+PC_Nyc_Taxi_Weather_Data <- prcomp(~.-X - pickup_datetime - payment_type - weather_description, center=T,scale=T,data = Nyc_Taxi_Weather_Data)
+
+str(PC_Nyc_Taxi_Weather_Data)
+
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ggbiplot)
+install.packages("remotes")
+remotes::install_github("vqv/ggbiplot")
+ggbiplot(PC_Ny
+
+plot(PC_Nyc_Taxi_Weather_Data)
+opar <- par()
+plot(
+  cumsum(pc_swiss_PEV),
+  ylim = c(0,1),
+  xlab = 'PC',
+  ylab = 'cumulative PEV',
+  pch = 20,
+  col = 'orange'
+)
+abline(h = 0.8, col = 'red', lty = 'dashed')
+par(opar)
+``
+
